@@ -77,31 +77,31 @@
               <article class="markdown-body entry-content" itemprop="text" id="grip-content">
                 <h1>
 <a id="user-content-how-not-to-get-panicked-using-go-channels" class="anchor" href="#how-not-to-get-panicked-using-go-channels" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>How NOT to get panicked using Go channels</h1>
-<p>In this article, I'll share some of my experiences about how to work with Golang channels effectively without having panic attacks. Hope you'll enjoy.</p>
+<p>In this article, I'll share some of my experiences about how to work with Golang channels effectively without having a total panic attack. Hope you'll enjoy.</p>
 <h2>
 <a id="user-content-unbuffered-channel-vs-buffered-channel" class="anchor" href="#unbuffered-channel-vs-buffered-channel" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Unbuffered channel vs Buffered channel</h2>
-<p>Buffered channel can be created by using capacity argument:</p>
+<p>Go channels are like, well, channels, that connect goroutines and help them communicating with each other. A channel is initialized using the <code>chan</code> keyword followed by the type of data that get transferred in the channel. It might also take in another capacity paramenter, which is the size of the queue that messages sit in before the channel is ready to transfer, hence buffered channel. Unbuffered channels are channels with buffer size of zero.</p>
 <div class="highlight highlight-source-go"><pre><span class="pl-smi">c</span>  <span class="pl-k">:=</span> <span class="pl-c1">make</span>(<span class="pl-k">chan</span> <span class="pl-k">int</span>)     <span class="pl-c"><span class="pl-c">//</span> c is an unbuffered channel</span>
 <span class="pl-smi">bc</span> <span class="pl-k">:=</span> <span class="pl-c1">make</span>(<span class="pl-k">chan</span> <span class="pl-k">int</span>, <span class="pl-c1">10</span>) <span class="pl-c"><span class="pl-c">//</span> bc is a buffered channel with the capacity of 10 </span></pre></div>
-<p>You can think of unbuffered channels are buffered channels with capacity of zero. But what does <em>capacity</em> mean in this context? Just look at these working principles of a channel:</p>
+<p>These are some basic principles that everyone must be familiar with to work with channels properly:</p>
 <ol>
 <li>
 <p>Sender(s) are goroutines that send values to channels, receivers are goroutines that receive values from channels:</p>
 <div class="highlight highlight-source-go"><pre>c <span class="pl-k">&lt;-</span> x    <span class="pl-c"><span class="pl-c">//</span> send x to channel c</span>
-<span class="pl-smi">x</span> <span class="pl-k">:=</span> <span class="pl-k">&lt;-</span>c  <span class="pl-c"><span class="pl-c">//</span> read x from channel c</span></pre></div>
+<span class="pl-smi">x</span> <span class="pl-k">:=</span> <span class="pl-k">&lt;-</span>c  <span class="pl-c"><span class="pl-c">//</span> receive x from channel c</span></pre></div>
 </li>
 <li>
-<p><em>If a channel is full, sender(s) will be blocked until there's some receivers finished reading from it</em>. An unbuffered channel is always full and a buffered channel is full if it contains as many items as its capacity. <em>If there's no receiver reading from a full channel, deadlocks will occur to all of its senders and they will all go panic!</em></p>
+<p><em>If a channel buffer is full, sender(s) will be blocked until there's a receiver finish reading from it, if there isn't one, deadlock will occurs on the senders side and the program will panic</em></p>
 </li>
 <li>
-<p>The opposite thing happens when the channel is empty, all receivers are blocked until there's someone sends something to it, and if there's none, they will also panic</p>
+<p>The opposite thing happens when the channel is empty, all receivers are blocked until there's someone sends something to it. And if not, they will also panic</p>
 </li>
 </ol>
-<p>The direct result from this is sending to or receiving from an unbuffered channel in the same goroutine <em>always</em> causes panic:</p>
+<p>Because unbuffered channels have buffer size of zero, that means they are always both full <em>and</em>  empty at the same time. The direct consequence from this is if you send to or read from a channel in the same goroutine right after it is initialized, it will cause panic.</p>
 <div class="highlight highlight-source-go"><pre><span class="pl-smi">c</span> <span class="pl-k">:=</span> <span class="pl-c1">make</span>(<span class="pl-k">chan</span> <span class="pl-k">int</span>)
 c <span class="pl-k">&lt;-</span> <span class="pl-c1">1</span>                  <span class="pl-c"><span class="pl-c">//</span> panicked!</span>
 <span class="pl-k">&lt;-</span>c                     <span class="pl-c"><span class="pl-c">//</span> also panicked!</span></pre></div>
-<p>Just bear in mind that channeling is a <em>communicating model</em>,  if there's a talker (sender) there also have to be a listener (receiver) and otherwise. So to make the above example work, you have to start another goroutine to communicate with the current one:</p>
+<p>Bear in mind that channeling is a <em>communicating model</em>, if there's a talker (sender) there also have to be a listener (receiver) and otherwise. So to make the above example work, you have to start another goroutine to communicate with the current one:</p>
 <div class="highlight highlight-source-go"><pre><span class="pl-smi">c</span> <span class="pl-k">:=</span> <span class="pl-c1">make</span>(<span class="pl-k">chan</span> <span class="pl-k">int</span>)
 <span class="pl-k">go</span> <span class="pl-k">func</span>(){
   c <span class="pl-k">&lt;-</span> <span class="pl-c1">1</span>
@@ -109,8 +109,8 @@ c <span class="pl-k">&lt;-</span> <span class="pl-c1">1</span>                  
 fmt.<span class="pl-c1">Println</span>(<span class="pl-k">&lt;-</span>c)</pre></div>
 <h2>
 <a id="user-content-properly-closing-a-channel" class="anchor" href="#properly-closing-a-channel" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Properly Closing a Channel</h2>
-<p>Channels are like teenagers with paranoid personality disorder, they get panicked so damn easily. Reading from an empty channel with no one sending to it causes panic. Sending to a full channel with no one reading from it causes panic. Closing a closed channel causes panic. And sending to a closed channel also causes panic. Whether you're in the role of sender or reader, you always have to be extremely careful with it.</p>
-<p>Like normal communications, there are various types of communicating through a channel: one-to-one (one sender, one receiver), one-to-many (one sender, many receivers), many-to-one (many senders, one receiver) and many-to-many (many senders, many receivers). Identifying if a conversation is over yet is a critical task and needs a more effective mechanism than, let's say, waiting for the silence becomes too awkward to stay so that you just stand up and leave and never get invited to hang out with your friends again. In channeling model, this mechanism is channel closing, all parties can just check if the channel is closed to know the communication is over or not. But again, we have to be careful not to cause any panics to happen.</p>
+<p>Channels are like teenagers with paranoid personality disorder, they get panicked so damn easily. Reading from an empty channel with no one sending to it causes panic. Sending to a full channel with no one reading from it causes panic. Closing a closed channel causes panic. And sending to a closed channel also causes panic. Whether you're in the role of sender or receiver, you always have to be extremely careful with it.</p>
+<p>Like normal communications, there are various types of communicating through a channel: one-to-one (one sender, one receiver), one-to-many (one sender, many receivers), many-to-one (many senders, one receiver) and many-to-many (many senders, many receivers). Identifying if a conversation is over yet is a critical task and needs a more effective mechanism than, let's say, waiting for the silence becomes too awkward to stay so that you just stand up and leave and never get invited to hang out with your friends again. In channeling model, this mechanism is channel closing: all parties can just check if the channel is closed to know the communication is over or not. But again, we have to be careful not to cause any panics to happen.</p>
 <p>The ultimate rule for closing a channel is: <strong>Don't close a channel when there's still someone intends to send to it</strong>. Let's see if we can achieve our goal without violating this rule.</p>
 <h3>
 <a id="user-content-one-to-one-and-one-to-many-models" class="anchor" href="#one-to-one-and-one-to-many-models" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>One-to-One and One-to-Many Models</h3>
@@ -136,7 +136,7 @@ fmt.<span class="pl-c1">Println</span>(<span class="pl-k">&lt;-</span>c)</pre></
 </ul>
 <h3>
 <a id="user-content-many-to-one-and-many-to-many-models" class="anchor" href="#many-to-one-and-many-to-many-models" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Many-to-One and Many-to-Many Models</h3>
-<p>In these cases, only the last sender has the right to close the channel, because if the channel is closed any sooner, it will cause panics. One method can be used to ensure that can be done is keeping track of how many senders joining to the channel and how many that already terminated, so that whenever a sender's about to terminate, it can check if it's the last one and then close the channel.</p>
+<p>In these cases, only the last sender has the right to close the channel, because if the channel is closed any sooner, it will cause panics. One method can be used to ensure that it can be done is keeping track of how many senders joining to the channel and how many that already terminated, so that whenever a sender is about to terminate, it can check if it's the last one and then close the channel.</p>
 <ul>
 <li>Main goroutine:
 <div class="highlight highlight-source-go"><pre><span class="pl-k">type</span> <span class="pl-v">Counter</span> <span class="pl-k">struct</span> {
@@ -189,7 +189,7 @@ fmt.<span class="pl-c1">Println</span>(<span class="pl-k">&lt;-</span>c)</pre></
 </ul>
 <p>If you notice, there's a <strong>fatal flaw</strong> in this method: If there's no senders joining the channel before the current one terminates, the channel will be closed. Most of the time, all sender workloads are pretty heavy (that's why we have to use multiple senders in the first place) so this will likely happen to the last one. But there's no way to be ABSOLUTELY sure that it doesn't happen right at the first goroutine.</p>
 <p>There is, however, a certain condition this method can work. That is if we know exactly how many senders are there, so that we can confidently close the channel after all of them terminated. Otherwise, closing a multiple-sender channel, with an absolute guaranty that there's no more data sent to it, is just an impossible task.</p>
-<p>In a less ideal circumstance, we need a way to signal other senders about the channel closing event, so that they will not send data to that channel, causing panics and crashing our program. In that case, you might want to check out the article <a href="https://go101.org/article/channel-closing.html" rel="nofollow">How to Gracefully Close Channels</a> for more information.</p>
+<p>In a less ideal circumstance, we need a way to signal other senders about the channel closing event, so that they will not crash our program by sending more data to it. In that case, you might want to check out the article <a href="https://go101.org/article/channel-closing.html" rel="nofollow">How to Gracefully Close Channels</a> for more information.</p>
 <p>Thanks for reading.</p>
 
               </article>
