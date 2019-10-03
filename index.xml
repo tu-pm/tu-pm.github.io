@@ -2,12 +2,23 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Minimalista</title>
-    <link>https://github.com/tu-pm/tu-pm.github.io/blob/master/</link>
+    <link>/</link>
     <description>Recent content on Minimalista</description>
     <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Thu, 03 Oct 2019 11:31:03 +0700</lastBuildDate>
     
-	<atom:link href="https://github.com/tu-pm/tu-pm.github.io/blob/master/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Go_channel</title>
+      <link>/go_channel/</link>
+      <pubDate>Thu, 03 Oct 2019 11:31:03 +0700</pubDate>
+      
+      <guid>/go_channel/</guid>
+      <description>How NOT to get panicked using Go channels In this article, I&amp;rsquo;ll share some of my experiences about how to work with Golang channels effectively without having a total panic attack. Hope you&amp;rsquo;ll enjoy.
+Unbuffered channel vs Buffered channel Go channels are like, well, channels, that connect goroutines and help them communicating with each other. A channel is initialized using the chan keyword followed by the type of data that get transferred in the channel.</description>
+    </item>
     
   </channel>
 </rss>

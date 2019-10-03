@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>Go_channel // Minimalista</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.59.0-DEV" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="Tu Pham" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="/css/main.min.59023e5fd38d6ecb0e1dfbb295077c3c67e00e3b9eb3feaf34b5a5e6b332897a.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Go_channel"/>
+<meta name="twitter:description" content="How NOT to get panicked using Go channels In this article, I&rsquo;ll share some of my experiences about how to work with Golang channels effectively without having a total panic attack. Hope you&rsquo;ll enjoy.
+Unbuffered channel vs Buffered channel Go channels are like, well, channels, that connect goroutines and help them communicating with each other. A channel is initialized using the chan keyword followed by the type of data that get transferred in the channel."/>
+
+    <meta property="og:title" content="Go_channel" />
+<meta property="og:description" content="How NOT to get panicked using Go channels In this article, I&rsquo;ll share some of my experiences about how to work with Golang channels effectively without having a total panic attack. Hope you&rsquo;ll enjoy.
+Unbuffered channel vs Buffered channel Go channels are like, well, channels, that connect goroutines and help them communicating with each other. A channel is initialized using the chan keyword followed by the type of data that get transferred in the channel." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/go_channel/" />
+<meta property="article:published_time" content="2019-10-03T11:31:03+07:00" />
+<meta property="article:modified_time" content="2019-10-03T11:31:03+07:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href=""><img class="app-header-avatar" src="/http:/involve.vc/wp-content/uploads/2017/08/icon-Coding.svg" alt="Tu Pham" /></a>
+      <h1>Minimalista</h1>
+      <p>Another tech blog</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://github.com/tu-pm/" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">Go_channel</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          Oct 3, 2019
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          5 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      
+
+<h1 id="how-not-to-get-panicked-using-go-channels">How NOT to get panicked using Go channels</h1>
+
+<p>In this article, I&rsquo;ll share some of my experiences about how to work with Golang channels effectively without having a total panic attack. Hope you&rsquo;ll enjoy.</p>
+
+<h2 id="unbuffered-channel-vs-buffered-channel">Unbuffered channel vs Buffered channel</h2>
+
+<p>Go channels are like, well, channels, that connect goroutines and help them communicating with each other. A channel is initialized using the <code>chan</code> keyword followed by the type of data that get transferred in the channel. It might also take in another capacity paramenter, which is the size of the queue that messages sit in before the channel is ready to transfer, hence buffered channel. Unbuffered channels are channels with buffer size of zero.</p>
+
+<pre><code class="language-go">c  := make(chan int)     // c is an unbuffered channel
+bc := make(chan int, 10) // bc is a buffered channel with the capacity of 10 
+</code></pre>
+
+<p>These are some basic principles that everyone must be familiar with to work with channels properly:</p>
+
+<ol>
+<li><p>Sender(s) are goroutines that send values to channels, receivers are goroutines that receive values from channels:</p>
+
+<pre><code class="language-go">c &lt;- x    // send x to channel c
+x := &lt;-c  // receive x from channel c
+</code></pre></li>
+
+<li><p><em>If a channel buffer is full, sender(s) will be blocked until there&rsquo;s a receiver finish reading from it, if there isn&rsquo;t one, deadlock will occurs on the senders side and the program will panic</em></p></li>
+
+<li><p>The opposite thing happens when the channel is empty, all receivers are blocked until there&rsquo;s someone sends something to it. And if not, they will also panic</p></li>
+</ol>
+
+<p>Because unbuffered channels have buffer size of zero, that means they are always both full <em>and</em>  empty at the same time. The direct consequence from this is if you send to or read from a channel in the same goroutine right after it is initialized, it will cause panic.</p>
+
+<pre><code class="language-go">c := make(chan int)
+c &lt;- 1                  // panicked!
+&lt;-c                     // also panicked!
+</code></pre>
+
+<p>Bear in mind that channeling is a <em>communicating model</em>, if there&rsquo;s a talker (sender) there also have to be a listener (receiver) and otherwise. So to make the above example work, you have to start another goroutine to communicate with the current one:</p>
+
+<pre><code class="language-go">c := make(chan int)
+go func(){
+  c &lt;- 1
+}()
+fmt.Println(&lt;-c)
+</code></pre>
+
+<h2 id="properly-closing-a-channel">Properly Closing a Channel</h2>
+
+<p>Channels are like teenagers with paranoid personality disorder, they get panicked so damn easily. Reading from an empty channel with no one sending to it causes panic. Sending to a full channel with no one reading from it causes panic. Closing a closed channel causes panic. And sending to a closed channel also causes panic. Whether you&rsquo;re in the role of sender or receiver, you always have to be extremely careful with it.</p>
+
+<p>Like normal communications, there are various types of communicating through a channel: one-to-one (one sender, one receiver), one-to-many (one sender, many receivers), many-to-one (many senders, one receiver) and many-to-many (many senders, many receivers). Identifying if a conversation is over yet is a critical task and needs a more effective mechanism than, let&rsquo;s say, waiting for the silence becomes too awkward to stay so that you just stand up and leave and never get invited to hang out with your friends again. In channeling model, this mechanism is channel closing: all parties can just check if the channel is closed to know the communication is over or not. But again, we have to be careful not to cause any panics to happen.</p>
+
+<p>The ultimate rule for closing a channel is: <strong>Don&rsquo;t close a channel when there&rsquo;s still someone intends to send to it</strong>. Let&rsquo;s see if we can achieve our goal without violating this rule.</p>
+
+<h3 id="one-to-one-and-one-to-many-models">One-to-One and One-to-Many Models</h3>
+
+<p>These are the easiest cases, because there&rsquo;s only one sender, it can just close the channel, indicating that it has nothing to send anymore.</p>
+
+<ul>
+<li><p>Sender:</p>
+
+<pre><code class="language-go">go func(){
+  ...
+  close(ch)
+  ...
+}()
+</code></pre></li>
+
+<li><p>Receivers:</p>
+
+<pre><code class="language-go">go func(){
+  message, ok := &lt;- ch
+  if ok{
+    // handle message
+  } else {
+    // channel is closed, stop listening
+  }
+}()
+</code></pre></li>
+</ul>
+
+<h3 id="many-to-one-and-many-to-many-models">Many-to-One and Many-to-Many Models</h3>
+
+<p>In these cases, only the last sender has the right to close the channel, because if the channel is closed any sooner, it will cause panics. One method can be used to ensure that it can be done is keeping track of how many senders joining to the channel and how many that already terminated, so that whenever a sender is about to terminate, it can check if it&rsquo;s the last one and then close the channel.</p>
+
+<ul>
+<li><p>Main goroutine:</p>
+
+<pre><code class="language-go">type Counter struct {
+  total      int 
+  terminated int 
+  mux        sync.Mutex
+}
+
+func (counter *Counter) Join() {
+  counter.mux.Lock()
+  counter.total += 1
+  counter.mux.Unlock()
+}
+
+func (counter *Counter) Terminate() {
+  counter.mux.Lock()
+  counter.terminated += 1
+  counter.mux.Unlock()
+}
+
+func (counter *Counter) IsLast() {
+  counter.mux.Lock()
+  defer counter.mux.Unlock()
+  return counter.mux.terminated == counter.mux.total-1
+}
+var counter Counter
+</code></pre></li>
+
+<li><p>Senders:</p>
+
+<pre><code class="language-go">go func(){
+  counter.Join()
+  // do something
+  // ...
+  // before terminating
+  if counter.IsLast(){
+    close(ch)
+  }
+  counter.Terminate()
+}()
+</code></pre></li>
+
+<li><p>Receivers:</p>
+
+<pre><code class="language-go">go func(){
+  message, ok := &lt;- ch
+  if ok{
+    // handle message
+  } else {
+    // channel is closed, stop listening
+  }
+}()
+</code></pre>
+
+<p>If you notice, there&rsquo;s a <strong>fatal flaw</strong> in this method: If there&rsquo;s no senders joining the channel before the current one terminates, the channel will be closed. Most of the time, all sender workloads are pretty heavy (that&rsquo;s why we have to use multiple senders in the first place) so this will likely happen to the last one. But there&rsquo;s no way to be ABSOLUTELY sure that it doesn&rsquo;t happen right at the first goroutine.</p></li>
+</ul>
+
+<p>There is, however, a certain condition this method can work. That is if we know exactly how many senders are there, so that we can confidently close the channel after all of them terminated. Otherwise, closing a multiple-sender channel, with an absolute guaranty that there&rsquo;s no more data sent to it, is just an impossible task.</p>
+
+<p>In a less ideal circumstance, we need a way to signal other senders about the channel closing event, so that they will not crash our program by sending more data to it. In that case, you might want to check out the article <a href="https://go101.org/article/channel-closing.html">How to Gracefully Close Channels</a> for more information.</p>
+
+<p>Thanks for reading.</p>
+
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>
